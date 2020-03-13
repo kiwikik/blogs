@@ -28,6 +28,7 @@ If your OpenShift certificate is self-signed then you also need to add it to you
 You can get the URL from Step.1. The port is 443 by default.
 
 == 3. Tag your image
+
  $ docker images
 
 Take a note of IMAGE_ID of the image you pulled.
