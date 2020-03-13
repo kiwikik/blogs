@@ -20,6 +20,10 @@ NOTE: If your docker private registry has a self-signed certificate you will nee
      "insecure-registries" : [ "{MY_REGISTRY}:{PORT}" ]
  }
 
+Restart docker
+
+ $ systemctl restart docker
+
 If your OpenShift certificate is self-signed then you also need to add it to your docker configuration
 You can get the URL from Step.1. The port is 443 by default.
 
@@ -33,6 +37,10 @@ Take a note of IMAGE_ID of the image you pulled.
 NOTE: that OPENSHIFT_PROJECT_NAME is the name of the OpenShift namespece where ImageStream will be created
 
 == 4. Push image to OpenShift registry
+Before you can push images into internal OpenShift registry you need to log into it.
+You will have to use a token to do that. Kubeadmin password would not work.
+
+ $ docker login -u 'oc whoami' -p 'oc whoami --show-token' default-route-openshift-image-registry.apps.MY_DOMAINNAME
 
  $ docker push default-route-openshift-image-registry.apps.MY_DOMAINNAME/OPENSHIFT_PROJECT_NAME/MY_APP:VERSION
 
