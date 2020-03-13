@@ -1,4 +1,4 @@
-= Create a NFS persisten volume and use it as a storage for OpenShift 4.x registry
+= Create a NFS persistent volume and use it as a storage for OpenShift 4.x registry
 
 == 1. Configure your NFS server
 You can follow official instructions for setting up NFS:
