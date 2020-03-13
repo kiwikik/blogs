@@ -1,0 +1,94 @@
+= Create a NFS persisten volume and use it as a storage for OpenShift 4.x registry
+
+== 1. Configure your NFS server
+You can follow official instructions for setting up NFS:
+
+- https://access.redhat.com/solutions/1355233[for RHEL7]
+- https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_file_systems/exporting-nfs-shares_managing-file-systems#nfs-server-configuration_exporting-nfs-shares[for RHEL8]
+
+NOTE: Make sure you also update ownership and permissions on the shared directory
+
+ $ chown nfsnobody:nfsnobody /export; chmod 777 /export; restorecon -Rv /export
+
+== 2. Create a Persistent Volume
+
+Please update the nfs `path:`, `server:` and `storage:` values according to your environment
+
+ $ cat <<EOF > pv-nfs.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-nfs
+spec:
+  capacity:
+    storage: 200Gi
+  storageClassName: nfs-storage
+  accessModes:
+  - ReadWriteMany
+  - ReadOnlyMany
+  - ReadWriteOnce
+  nfs:
+    path: /export
+    server: 172.10.10.10
+  persistentVolumeReclaimPolicy: Delete
+EOF
+
+create the PV on OpenShift
+
+ $ oc create -f pv-nfs.yaml
+
+NOTE: you can verify that the PV is bounded by running `$ oc get pv`
+
+== 3. Create Persistent Volume Claim
+We will create a PVC in openshift-image-registry namespace
+
+ $ oc project openshift-image-registry
+
+Create a PVC definition. Please update `storage:` value to the desired size.
+
+NOTE: Minimum recommended size is 100GB
+
+ $ cat <<EOF > pvc-nfs.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: registry-storage
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-storage
+  resources:
+    requests:
+      storage: 100Gi
+
+Create Persistent volume claim
+
+ $ oc create -f pvc-nfs.yaml
+
+Verify that the claim was created and is in BOUND state.
+
+ $ oc get pvc -n openshift-image-registry
+
+== 4. Update Registry Operator configuration
+
+In this step you will configure registry operator to your newly create volume claim
+
+ $ oc edit configs.imageregistry.operator.openshift.io
+
+Than add or replace the following section of the yaml configuration
+
+ ...
+  storage:
+    pvc:
+      claim: registry-storage
+ ...
+
+== 5. Verify the registry
+You should notice that registry pods have been restarted.
+
+ $ oc get pods -n openshift-image-registry
+
+You may also want to deploy a simple application to OpenShift to insure that you can both push and images.
+
+ $ oc new-project test
+ $ oc new-app httpd:latest

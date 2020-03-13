@@ -1,0 +1,58 @@
+= Add multiple ConfigMaps or Secrets to the same mountPath in OpenShift 4.x
+
+Sometimes you will need to add two or more configurations or secrets to your deployed application that should be mounted on the same
+path inside the container.
+If you use mountPath twice in the list of volumeMounts. OpenShift will give you an error: "volume exists". To fix that
+we need to use a subPath. In this example we will attach one configuration and one secret during the container runtime.
+
+
+== 1. Create ConfigMaps in OpenShift
+
+ $ oc create configmap application-config --from-file=application.properties
+
+ $ oc create secret database-config --from-file=database.properties
+
+This examples assumes you have local configuration files named sapplication.properties and database.properties
+available in the current directory.
+
+== 2. Edit your deploymentconfig
+Assuming your deployment configuration is called "my-app"
+
+Add the following to the "spec" section.
+
+ $ oc edit dc my-app
+
+     spec:
+      containers:
+      - name: my-app
+        image: docker.example.com/app:1
+        volumeMounts:
+        - name: appconfig-volume
+          mountPath: /config/application.properties
+          subPath: application.properties
+          readOnly: true
+        - name: dbconfig-volume
+          mountPath: /config/database.properties
+          subPath: database.properties
+          readOnly: true
+      volumes:
+      - name: appconfig-volume
+        configMap:
+          name: application-config
+      - name: dbconfig-volume
+        secret:
+          secretName: database-config
+
+NOTE: It could be that there is more than one "spec" in your deployment config.
+Make sure you edit the correct one!
+
+== 3. Save your deployment config
+You can use 'vi' syntax to save your edit. Type `:wq`
+This should start a re-deployment of your pod(s).
+You can verify the presence of the files by executing remote shell to your container.
+
+ $ oc rsh my-pod-name
+
+If you have more that one container inside the pod you can use `-c` flag to refer to a specific container.
+
+ $ oc logs my-pod-name -c my-container-name

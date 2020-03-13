@@ -1,0 +1,44 @@
+= Deploy a docker image from your private registry to OpenShift 4.x
+
+== 1. Expose OCP registry:
+ $ oc patch configs.imageregistry.operator.openshift.io/cluster --type merge -p '{"spec":{"defaultRoute":true}}'
+
+ $ oc get routes -n openshift-image-registry
+
+Take a note of the route HOST
+
+== 2. Pull the image from your private registry
+
+ $ docker pull {MYREGISTRY}/{MY_APP}:{VERSION}
+
+NOTE: If your docker private registry has a self-signed certificate you will need to add your registry URL to your trusted registries in docker config
+
+
+ $ vi /etc/docker/daemon.json
+
+ {
+     "insecure-registries" : [ "{MY_REGISTRY}:{PORT}" ]
+ }
+
+If your OpenShift certificate is self-signed then you also need to add it to your docker configuration
+You can get the URL from Step.1. The port is 443 by default.
+
+== 3. Tag your image
+ $ docker images
+
+Take a note of IMAGE_ID of the image you pulled.
+
+ $ docker tag IMAGE_ID default-route-openshift-image-registry.apps.MY_DOMAINNAME/OPENSHIFT_PROJECT_NAME/MY_APP:VERSION
+
+NOTE: that OPENSHIFT_PROJECT_NAME is the name of the OpenShift namespece where ImageStream will be created
+
+== 4. Push image to OpenShift registry
+
+ $ docker push default-route-openshift-image-registry.apps.MY_DOMAINNAME/OPENSHIFT_PROJECT_NAME/MY_APP:VERSION
+
+Now your image should be available to be deployed from either UI or CLI
+
+== 5. Deploy the application via CLI
+
+ $ oc new-app MY_APP:VERSION -n OPENSHIFT_PROJECT_NAME
+
